@@ -97,12 +97,12 @@ class HotkeysConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     provider: Literal["ollama"] = "ollama"
-    model: str = "qwen2.5:7b-instruct"
+    model: str = "llama3.1:latest"
     host: str = "http://localhost:11434"
     keep_alive: int | str = -1
     temperature: float = Field(0.3, ge=0.0, le=2.0)
     timeout_s: float = Field(12.0, gt=0)
-    fallback_model: str | None = "qwen2.5:3b-instruct"
+    fallback_model: str | None = "llama3.2:3b"
 
 
 class STTConfig(BaseModel):

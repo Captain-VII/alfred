@@ -7,6 +7,9 @@ projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
+### Modifié
+- Modèle LLM par défaut : `llama3.1:latest` (secours `llama3.2:3b`), tous deux avec tool calling natif dans Ollama.
+
 ## [0.1.0] - 2026-09-11
 
 ### Ajouté

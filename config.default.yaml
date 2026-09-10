@@ -19,12 +19,12 @@ hotkeys:
 
 llm:
   provider: ollama
-  model: qwen2.5:7b-instruct
+  model: llama3.1:latest
   host: http://localhost:11434
   keep_alive: -1                   # -1 = le modèle reste en mémoire indéfiniment
   temperature: 0.3
   timeout_s: 12
-  fallback_model: qwen2.5:3b-instruct   # utilisé si le modèle principal ne répond pas
+  fallback_model: llama3.2:3b   # utilisé si le modèle principal ne répond pas
 
 stt:
   model: small                     # tiny | base | small | medium | large-v3

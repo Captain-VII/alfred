@@ -18,7 +18,7 @@ def isolated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
 
 def test_defaults_are_valid() -> None:
     cfg = cfgmod.AlfredConfig()
-    assert cfg.llm.model == "qwen2.5:7b-instruct"
+    assert cfg.llm.model == "llama3.1:latest"
     assert cfg.router.semantic_threshold == 0.82
     assert cfg.persona.mode == "formal"
 
@@ -36,7 +36,7 @@ def test_user_override_merges(isolated: Path) -> None:
     )
     cfg = cfgmod.load_config()
     assert cfg.persona.mode == "concise"
-    assert cfg.llm.model == "qwen2.5:7b-instruct"  # défaut conservé
+    assert cfg.llm.model == "llama3.1:latest"  # défaut conservé
     assert cfg.app_aliases["jeux"] == "steam.exe"  # clé normalisée
     assert cfg.app_aliases["navigateur"] == "firefox.exe"  # défaut conservé
 

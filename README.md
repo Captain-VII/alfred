@@ -34,7 +34,7 @@
 
 1. **Installez [Ollama](https://ollama.com/download/windows)** et lancez-le (une icône apparaît dans la barre système).
 2. **Téléchargez `Alfred-Setup-x.y.z.exe`** depuis la [dernière release](https://github.com/dorian-dubosc/alfred/releases/latest) et exécutez-le.
-3. **Suivez l'assistant de premier lancement** : il télécharge le modèle de langage (`qwen2.5:7b-instruct`, ~4,7 Go) et la voix (~60 Mo), teste votre micro et vos haut-parleurs.
+3. **Suivez l'assistant de premier lancement** : il télécharge le modèle de langage (`llama3.1:latest`, ~4,9 Go) et la voix (~60 Mo), teste votre micro et vos haut-parleurs.
 
 Alfred vit ensuite dans la barre système. **Ctrl + Espace** pour parler, **Ctrl + Maj + Espace** pour taper, **Échap** pour tout annuler.
 
@@ -97,7 +97,7 @@ Latence mesurée sur un i7 / RTX 3060 avec `python scripts/benchmark.py` :
 | Routage niveau 2 (embedding + recherche) | ~12 ms |
 | Whisper `small` int8, phrase de 2 s (GPU / CPU) | ~180 ms / ~650 ms |
 | Piper, première phrase audible | ~70 ms |
-| Niveau 3, `qwen2.5:7b-instruct` préchargé | ~900 ms |
+| Niveau 3, `llama3.1:latest` préchargé | ~900 ms |
 
 Ce qui rend ça possible : Ollama préchargé (`keep_alive: -1`) avec requête de warm-up, Whisper et Piper chargés une fois en RAM, embeddings calculés au boot et cachés sur disque, tools `async`, TTS qui démarre pendant l'exécution des tools lents.
 
@@ -149,8 +149,8 @@ hotkeys:
   push_to_talk: false          # true = enregistrer tant que la touche est maintenue
 
 llm:
-  model: qwen2.5:7b-instruct   # tout modèle Ollama avec tool calling
-  fallback_model: qwen2.5:3b-instruct
+  model: llama3.1:latest   # tout modèle Ollama avec tool calling
+  fallback_model: llama3.2:3b
   keep_alive: -1
 
 stt:
@@ -186,11 +186,11 @@ Deux voix masculines françaises sont proposées. `fr_FR-gilles-low` est la plus
 
 | Symptôme | Cause probable | Remède |
 |---|---|---|
-| « Mon jugement me fait défaut… » | Ollama ne tourne pas ou le modèle est absent | Lancez Ollama, puis `ollama pull qwen2.5:7b-instruct`. |
+| « Mon jugement me fait défaut… » | Ollama ne tourne pas ou le modèle est absent | Lancez Ollama, puis `ollama pull llama3.1`. |
 | Alfred n'entend rien | Mauvais micro sélectionné | Réglages → Modèles → Microphone. Vérifiez aussi la confidentialité Windows (accès au micro pour les applications de bureau). |
 | Le raccourci ne répond pas | Une autre application capture Ctrl+Espace (souvent un IME ou un IDE) | Changez `hotkeys.invoke_voice` (ex. `alt+space`, `f9`). |
 | Première réponse LLM très lente | Modèle en cours de chargement | Normal au premier appel ; `keep_alive: -1` le garde ensuite en mémoire. |
-| Réponses lentes en général | Whisper sur CPU, ou modèle 7B sans GPU | `stt.model: base` et `llm.model: qwen2.5:3b-instruct`. |
+| Réponses lentes en général | Whisper sur CPU, ou modèle 7B sans GPU | `stt.model: base` et `llm.model: llama3.2:3b`. |
 | « Cette application n'est pas installée » | Nom trop éloigné ou app hors menu Démarrer | Ajoutez un alias dans `app_aliases`. |
 | La recherche web échoue | Hors ligne, ou DuckDuckGo limite | Alfred l'annonce ; réessayez plus tard. |
 | Rien ne se passe, aucune icône | Une instance tourne déjà | Gestionnaire des tâches → Alfred.exe, ou tray → Redémarrer. |
