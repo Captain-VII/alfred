@@ -105,7 +105,7 @@ async def translate_clipboard(language: str = "anglais") -> str:
         "résume le presse-papier",
         "résume ce que j'ai copié",
         "fais-moi un résumé du texte copié",
-        "résume ça",
+        "résume le texte que j'ai copié",
     ],
     patterns=[
         r"résume(?:-moi)? (?:le |mon )?(?:presse[- ]papiers?|texte copié|ce que j'ai copié|ça|cela)",
