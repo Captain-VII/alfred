@@ -56,11 +56,16 @@ def press_vk(code: int) -> None:
 
 
 def _endpoint_volume() -> Any:
-    from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    """Interface IAudioEndpointVolume du périphérique de sortie par défaut (pycaw ≥ 2024 et ancien)."""
+    from pycaw.pycaw import AudioUtilities
 
-    devices = AudioUtilities.GetSpeakers()
-    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    device = AudioUtilities.GetSpeakers()
+    if hasattr(device, "EndpointVolume"):  # pycaw ≥ 20240210 : objet AudioDevice
+        return device.EndpointVolume
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import IAudioEndpointVolume
+
+    interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     return interface.QueryInterface(IAudioEndpointVolume)
 
 

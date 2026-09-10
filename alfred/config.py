@@ -16,11 +16,11 @@ import sys
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 log = logging.getLogger(__name__)
 
@@ -159,6 +159,30 @@ class AlfredConfig(BaseSettings):
         env_prefix="ALFRED__", env_nested_delimiter="__", extra="ignore"
     )
 
+    # Données YAML fusionnées (défaut + utilisateur), injectées comme source de priorité basse
+    _yaml_data: ClassVar[dict[str, Any]] = {}
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Priorité : arguments explicites > variables d'environnement > YAML."""
+        return (init_settings, env_settings, _YamlSource(settings_cls))
+
+    @classmethod
+    def from_yaml(cls, data: dict[str, Any]) -> AlfredConfig:
+        """Construit la config depuis un mapping YAML, en laissant l'environnement surcharger."""
+        cls._yaml_data = data
+        try:
+            return cls()
+        finally:
+            cls._yaml_data = {}
+
     general: GeneralConfig = Field(default_factory=GeneralConfig)
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -176,6 +200,16 @@ class AlfredConfig(BaseSettings):
         if value is None:
             return {}
         return {str(k).strip().lower(): str(v).strip() for k, v in dict(value).items()}
+
+
+class _YamlSource(PydanticBaseSettingsSource):
+    """Source pydantic-settings alimentée par ``AlfredConfig._yaml_data``."""
+
+    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+        return AlfredConfig._yaml_data.get(field_name), field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        return dict(AlfredConfig._yaml_data)
 
 
 # ----------------------------------------------------------------------
@@ -221,10 +255,10 @@ def load_config() -> AlfredConfig:
     """Charge défaut + utilisateur. En cas d'erreur de validation, retombe sur le défaut."""
     merged = _deep_merge(_read_yaml(default_config_path()), _read_yaml(ensure_user_config()))
     try:
-        return AlfredConfig(**merged)
+        return AlfredConfig.from_yaml(merged)
     except ValidationError as exc:
         log.error("config.yaml invalide, valeurs par défaut utilisées :\n%s", exc)
-        return AlfredConfig(**_read_yaml(default_config_path()))
+        return AlfredConfig.from_yaml(_read_yaml(default_config_path()))
 
 
 def save_config(cfg: AlfredConfig, path: Path | None = None) -> None:
@@ -296,7 +330,7 @@ class ConfigManager:
                     data[name] = _deep_merge(data[name], patch)
                 else:
                     data[name] = patch
-            new = AlfredConfig(**data)
+            new = AlfredConfig.from_yaml(data)
             self._config = new
             listeners = list(self._listeners)
         save_config(new)

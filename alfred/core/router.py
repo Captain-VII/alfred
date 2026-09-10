@@ -123,6 +123,13 @@ class SemanticIndex:
             len(self._labels),
         )
 
+    def _warm_up(self) -> None:
+        """Première inférence à vide : charge le modèle ONNX pour que la 1re requête réelle soit rapide."""
+        try:
+            self.embed(["bonjour"])
+        except Exception:
+            log.debug("Warm-up de l'index sémantique impossible", exc_info=True)
+
     def embed(self, texts: list[str]) -> np.ndarray:
         model = self._load_model()
         vectors = np.array(list(model.embed(texts)), dtype=np.float32)

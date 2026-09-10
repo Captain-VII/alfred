@@ -30,8 +30,18 @@ def setup_logging(level: str = "info") -> Path:
         root.addHandler(console)
 
     # Bibliothèques bavardes
-    for noisy in ("httpx", "httpcore", "faster_whisper", "urllib3", "comtypes", "PIL"):
+    for noisy in (
+        "httpx",
+        "httpcore",
+        "faster_whisper",
+        "urllib3",
+        "comtypes",
+        "PIL",
+        "huggingface_hub",
+    ):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    # Piper signale un phonème nasal absent de la table de gilles-low à chaque phrase : sans effet audible
+    logging.getLogger("piper.phoneme_ids").setLevel(logging.ERROR)
     return path
 
 

@@ -80,3 +80,9 @@ def test_manager_reload_is_silent_when_unchanged(isolated: Path) -> None:
 def test_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ALFRED__LLM__MODEL", "llama3:8b")
     assert cfgmod.AlfredConfig().llm.model == "llama3:8b"
+
+
+def test_env_overrides_user_yaml(isolated: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (isolated / "config.yaml").write_text("llm:\n  model: from-yaml\n", encoding="utf-8")
+    monkeypatch.setenv("ALFRED__LLM__MODEL", "from-env")
+    assert cfgmod.load_config().llm.model == "from-env"

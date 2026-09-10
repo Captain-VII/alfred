@@ -110,6 +110,13 @@ class OllamaClient:
         if not await self.ping():
             log.warning("Ollama injoignable sur %s", self._cfg.host)
             return
+        if not await self.has_model():
+            log.warning(
+                "Modèle %s absent d'Ollama : lancez « ollama pull %s » (ou l'assistant de premier lancement)",
+                self._cfg.model,
+                self._cfg.model,
+            )
+            return
         try:
             await self._client.post(
                 "/api/generate",
