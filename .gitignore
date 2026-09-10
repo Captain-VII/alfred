@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Modèles téléchargés au runtime
+assets/voices/*.onnx
+assets/voices/*.onnx.json
+assets/voices/*.part
+
+# Configuration utilisateur (garder config.default.yaml)
+config.yaml
+tests/_appdata/
+
+# Build
+installer/Output/
+*.spec.bak
+
+# IDE / OS
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini

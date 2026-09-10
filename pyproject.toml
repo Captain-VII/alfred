@@ -1,0 +1,126 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alfred-assistant"
+version = "0.1.0"
+description = "ALFRED — assistant vocal majordome local pour Windows 11"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "Dorian Dubosc" }]
+keywords = ["assistant", "voice", "windows", "ollama", "whisper", "piper", "french"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: French",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Desktop Environment",
+]
+
+dependencies = [
+    # --- Configuration ---
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pyyaml>=6.0",
+    "watchdog>=4.0",
+    # --- LLM ---
+    "httpx>=0.27",
+    # --- STT / VAD / audio ---
+    "faster-whisper>=1.0",
+    "webrtcvad-wheels>=2.0.14",
+    "sounddevice>=0.4.6",
+    "numpy>=1.26",
+    # --- TTS ---
+    "piper-tts>=1.2",
+    "onnxruntime>=1.17",
+    # --- Routage sémantique ---
+    "fastembed>=0.3",
+    "rapidfuzz>=3.6",
+    # --- UI / OS ---
+    "PyQt6>=6.6",
+    "keyboard>=0.13.5",
+    "pystray>=0.19",
+    "Pillow>=10.2",
+    "pywin32>=306; sys_platform == 'win32'",
+    "pycaw>=20240210; sys_platform == 'win32'",
+    "comtypes>=1.4; sys_platform == 'win32'",
+    "screen-brightness-control>=0.22",
+    "pyperclip>=1.8",
+    "windows-toasts>=1.1; sys_platform == 'win32'",
+    "mss>=9.0",
+    "psutil>=5.9",
+    # --- Web ---
+    "duckduckgo-search>=6.1",
+    "trafilatura>=1.9",
+    # --- Divers ---
+    "packaging>=24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.9",
+    "types-PyYAML",
+    "types-pywin32",
+    "pyinstaller>=6.5",
+]
+cuda = [
+    "torch>=2.2",
+]
+
+[project.scripts]
+alfred = "alfred.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/dorian-dubosc/alfred"
+Issues = "https://github.com/dorian-dubosc/alfred/issues"
+Changelog = "https://github.com/dorian-dubosc/alfred/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["alfred*"]
+
+[tool.setuptools.package-data]
+alfred = ["py.typed"]
+
+# ----------------------------------------------------------------------
+# Ruff
+# ----------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["alfred", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "ASYNC", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]  # accents français dans les chaînes/commentaires
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+# ----------------------------------------------------------------------
+# Mypy
+# ----------------------------------------------------------------------
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = false
+warn_return_any = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["build/", "dist/", "installer/"]
+
+# ----------------------------------------------------------------------
+# Pytest
+# ----------------------------------------------------------------------
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

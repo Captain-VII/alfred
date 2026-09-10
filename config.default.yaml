@@ -1,0 +1,76 @@
+# ======================================================================
+#  ALFRED — configuration par défaut
+#  Ce fichier est copié vers %APPDATA%\Alfred\config.yaml au premier
+#  lancement. Modifiez la copie, pas celui-ci. Toute modification est
+#  rechargée à chaud, sans redémarrer ALFRED.
+# ======================================================================
+
+general:
+  language: fr                  # langue de reconnaissance et de réponse
+  start_with_windows: true      # entrée HKCU\...\Run (géré depuis les réglages)
+  start_minimized: true         # démarre directement dans la barre système
+  first_run_done: false         # passe à true après l'assistant de configuration
+
+hotkeys:
+  invoke_voice: ctrl+space         # ouvre l'overlay et écoute le micro
+  invoke_text: ctrl+shift+space    # ouvre l'overlay en mode texte
+  cancel: escape                   # coupe tout : écoute, LLM, TTS
+  push_to_talk: false              # true = enregistrer tant que la touche est maintenue
+
+llm:
+  provider: ollama
+  model: qwen2.5:7b-instruct
+  host: http://localhost:11434
+  keep_alive: -1                   # -1 = le modèle reste en mémoire indéfiniment
+  temperature: 0.3
+  timeout_s: 12
+  fallback_model: qwen2.5:3b-instruct   # utilisé si le modèle principal ne répond pas
+
+stt:
+  model: small                     # tiny | base | small | medium | large-v3
+  device: auto                     # auto | cuda | cpu
+  compute_type: int8               # int8 | float16 | float32
+  vad_aggressiveness: 2            # 0 (permissif) → 3 (agressif)
+  max_recording_s: 15              # durée max d'une commande vocale
+  silence_end_ms: 700              # silence qui marque la fin de la phrase
+  input_device: null               # null = périphérique par défaut, sinon index ou nom
+
+tts:
+  voice: fr_FR-gilles-low          # fr_FR-gilles-low | fr_FR-tom-medium
+  length_scale: 1.08               # > 1 = débit plus lent
+  noise_scale: 0.667
+  noise_w: 0.8
+  sentence_silence: 0.35           # pause entre les phrases, en secondes
+  volume: 0.9
+  enabled: true
+  output_device: null
+
+router:
+  semantic_threshold: 0.82         # score minimal pour le niveau 2
+  semantic_margin: 0.05            # écart minimal avec le 2e tool candidat (évite les confusions)
+  enable_llm_fallback: true        # false = niveau 3 désactivé (mode strict)
+
+persona:
+  mode: formal                     # formal | concise
+  address: monsieur                # « monsieur », « madame », un prénom…
+
+behavior:
+  confirm_destructive: true        # demande vocale avant arrêt, suppression, etc.
+  sound_feedback: true             # clic sonore à la capture
+  history_turns: 5                 # tours conservés pour le contexte
+  log_level: info                  # debug | info | warning | error
+  show_metrics: false              # affiche les latences dans l'overlay
+
+updates:
+  auto_check: true
+  channel: stable                  # stable | beta
+  auto_install: false              # installe silencieusement au prochain redémarrage
+  repo: dorian-dubosc/alfred
+
+# Alias : nom parlé → exécutable (résolution floue appliquée ensuite)
+app_aliases:
+  navigateur: firefox.exe
+  code: Code.exe
+  musique: Spotify.exe
+  éditeur de code: Code.exe
+  terminal: wt.exe
