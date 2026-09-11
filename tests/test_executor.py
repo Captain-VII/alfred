@@ -192,6 +192,32 @@ def test_responses_have_both_modes() -> None:
     }
 
 
+def test_pick_avoids_doubled_punctuation() -> None:
+    """« Volume à 30 pour cent. » + « , monsieur. » ne doit pas donner « cent., monsieur. »."""
+    for _ in range(40):
+        text = pick("done_detail", "formal", "monsieur", "Volume à 30 pour cent.")
+        assert ".," not in text
+        assert ". ," not in text
+        assert ".." not in text
+        assert text.endswith(".")
+
+
+def test_internal_params_hidden_from_llm_schema() -> None:
+    """Les paramètres remplis par les regex ne doivent pas égarer le LLM."""
+    from alfred.tools.base import get_tool
+
+    spec = get_tool("set_volume")
+    assert spec is not None
+    props = spec.json_schema()["function"]["parameters"]["properties"]
+    assert set(props) == {"level"}
+    assert "up" in spec.params  # toujours disponible pour le niveau 1
+    assert spec.params["up"].internal
+
+    cancel = get_tool("cancel_timer")
+    assert cancel is not None
+    assert cancel.json_schema()["function"]["parameters"]["properties"] == {}
+
+
 def test_context_history_and_anaphora() -> None:
     ctx = ConversationContext(2)
     ctx.add("ouvre spotify", "Spotify est ouvert.", "open_app", {"app": "spotify"})
@@ -214,3 +240,73 @@ def test_system_prompt_mentions_tools(mode: str) -> None:
     assert "madame" in prompt
     assert "set_volume" in prompt
     assert ("CONCIS" in prompt) == (mode == "concise")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"name": "set_timer", "parameters": {"duration": "10 minutes"}}',
+        '<|python_tag|>{"name": "set_timer", "arguments": {"duration": "10 minutes"}}',
+        '```json\n{"name": "set_timer", "parameters": {"duration": "10 minutes"}}\n```',
+        '[{"name": "set_timer", "parameters": {"duration": "10 minutes"}}]',
+        '{"function": {"name": "set_timer", "arguments": "{\\"duration\\": \\"10 minutes\\"}"}}',
+    ],
+)
+def test_parse_inline_tool_calls(text: str) -> None:
+    from alfred.core.llm import parse_inline_tool_calls
+
+    calls = parse_inline_tool_calls(text)
+    assert len(calls) == 1
+    assert calls[0].name == "set_timer"
+    assert calls[0].arguments == {"duration": "10 minutes"}
+
+
+def test_parse_inline_tool_calls_ignores_prose() -> None:
+    from alfred.core.llm import parse_inline_tool_calls
+
+    assert parse_inline_tool_calls("Canberra, monsieur.") == []
+    assert parse_inline_tool_calls('Le JSON {"clé": 1} n\'est pas un appel.') == []
+
+
+def test_parse_inline_tool_calls_repairs_broken_quotes() -> None:
+    """llama3.1 produit régulièrement des guillemets non échappés dans les valeurs."""
+    from alfred.core.llm import parse_inline_tool_calls
+
+    broken = '{"name": "web_search", "parameters": {"query": "capitale de l"Australie"}}'
+    calls = parse_inline_tool_calls(broken)
+    assert len(calls) == 1
+    assert calls[0].name == "web_search"
+    assert calls[0].arguments["query"] == 'capitale de l"Australie'
+
+
+def test_looks_like_tool_call() -> None:
+    from alfred.core.llm import looks_like_tool_call
+
+    assert looks_like_tool_call('{"name": "web_search", "parameters": {"query": "x"}}')
+    assert looks_like_tool_call('<|python_tag|>{"name": "lock", "arguments": {}}')
+    assert looks_like_tool_call('[{"function": {"name": "lock"}}]')
+    assert not looks_like_tool_call("Canberra, monsieur.")
+    assert not looks_like_tool_call("Il est huit heures.")
+
+
+async def test_unreadable_tool_call_is_not_spoken(system) -> None:
+    """Un appel illisible devient « je n'ai pas compris », jamais du JSON prononcé."""
+    from alfred.core.llm import looks_like_tool_call, parse_inline_tool_calls
+
+    broken = '{"name": "web_search", "parameters": {"query": "x" "y"} '
+    assert parse_inline_tool_calls(broken) == []
+    assert looks_like_tool_call(broken)
+
+    class BrokenLLM:
+        async def chat(self, messages, tools=None, model=None):
+            # Le client a déjà neutralisé le texte illisible : il ne reste rien à dire.
+            return LLMReply(text="", model="fake")
+
+    h = Harness(llm=BrokenLLM())
+    await h.executor.handle("une demande incomprise par le modèle")
+    assert "{" not in h.spoken[-1]
+    assert h.spoken[-1] in {
+        "Je crains de ne pas avoir saisi, monsieur.",
+        "Pardonnez-moi, je n'ai pas compris.",
+        "Pourriez-vous reformuler, monsieur ?",
+    }

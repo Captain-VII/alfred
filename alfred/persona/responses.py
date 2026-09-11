@@ -7,6 +7,7 @@ Les chaînes peuvent contenir ``{address}`` (« monsieur ») et ``{detail}``.
 from __future__ import annotations
 
 import random
+import re
 
 _RESPONSES: dict[str, dict[str, list[str]]] = {
     # Action réussie, sans détail particulier
@@ -112,8 +113,15 @@ def pick(category: str, mode: str = "formal", address: str = "monsieur", detail:
     """
     variants = _RESPONSES.get(category, _RESPONSES["done"])
     pool = variants.get(mode) or variants["formal"]
-    text = random.choice(pool).format(address=address, detail=detail)
-    text = text.strip()
+    template = random.choice(pool)
+    # Le détail vient d'un tool et se termine souvent par un point. Quand le gabarit
+    # poursuit la phrase (« {detail}, {address}. »), on retire cette ponctuation
+    # pour éviter « Volume à trente pour cent., monsieur. ».
+    clean = detail.strip()
+    if "{detail}" in template and not template.rstrip().endswith("{detail}"):
+        clean = clean.rstrip(" .!…")
+    text = template.format(address=address, detail=clean).strip()
+    text = re.sub(r"\.\s*([.,;:!?])", r"\1", text)  # filet contre la ponctuation doublée
     if text and text[0].islower():
         text = text[0].upper() + text[1:]
     return text

@@ -7,6 +7,8 @@ Un tool déclare en une seule fois :
 - ``patterns`` → expressions régulières pour le matcher exact (niveau 1),
   les groupes nommés deviennent des paramètres ;
 - ``params`` → description humaine de chaque paramètre (pour le LLM) ;
+- ``internal`` → paramètres remplis uniquement par les regex du niveau 1 et
+  masqués dans le schéma JSON, pour ne pas égarer le LLM ;
 - ``confirm`` → demande une confirmation vocale avant exécution.
 
 Les types des paramètres sont déduits de la signature de la fonction et
@@ -42,6 +44,7 @@ class ToolParam:
     description: str
     required: bool
     default: Any
+    internal: bool = False  # rempli par les regex du niveau 1, masqué au LLM
 
     # ---- schéma JSON -------------------------------------------------
     def json_type(self) -> dict[str, Any]:
@@ -118,6 +121,8 @@ class ToolSpec:
         properties: dict[str, Any] = {}
         required: list[str] = []
         for p in self.params.values():
+            if p.internal:
+                continue  # rempli par les regex du niveau 1, invisible pour le LLM
             properties[p.name] = {**p.json_type(), "description": p.description}
             if p.required:
                 required.append(p.name)
@@ -156,6 +161,7 @@ def tool(
     examples: list[str] | None = None,
     params: dict[str, str] | None = None,
     patterns: list[str] | None = None,
+    internal: list[str] | None = None,
     confirm: bool = False,
     category: str = "général",
 ) -> Callable[[ToolFunc], ToolFunc]:
@@ -182,6 +188,7 @@ def tool(
                 description=descriptions.get(pname, pname),
                 required=not has_default,
                 default=param.default if has_default else None,
+                internal=pname in (internal or ()),
             )
         compiled = [re.compile(p, re.IGNORECASE) for p in (patterns or [])]
         spec = ToolSpec(

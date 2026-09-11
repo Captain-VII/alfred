@@ -41,6 +41,70 @@ class LLMReply:
 
 
 _SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
+_INLINE_CALL = re.compile(r"\{.*\}", re.S)
+# Valeur de chaîne JSON, y compris quand elle contient des guillemets non échappés
+# (« capitale de l"Australie » : llama3.1 produit régulièrement ce genre de JSON cassé).
+_STRING_VALUE = re.compile(r'(?<=:)(\s*)"(.*?)"(?=\s*[,}\]])', re.S)
+# Le texte ressemble-t-il à un appel d'outil plutôt qu'à une phrase ?
+_LOOKS_LIKE_CALL = re.compile(r'^\W*[\[{].*"(?:name|function)"\s*:', re.S)
+
+
+def looks_like_tool_call(text: str) -> bool:
+    """Vrai si le texte est manifestement un appel d'outil sérialisé, même illisible.
+
+    Sert de garde-fou : mieux vaut dire « je n'ai pas compris » que prononcer du JSON.
+    """
+    return bool(_LOOKS_LIKE_CALL.match(text.replace("<|python_tag|>", "").strip()))
+
+
+def _repair_json(text: str) -> str:
+    """Ré-échappe les guillemets internes des valeurs de chaînes d'un JSON approximatif."""
+
+    def fix(m: re.Match[str]) -> str:
+        inner = m.group(2).replace('\\"', '"').replace('"', '\\"')
+        return f'{m.group(1)}"{inner}"'
+
+    return _STRING_VALUE.sub(fix, text)
+
+
+def parse_inline_tool_calls(text: str) -> list[ToolCall]:
+    """Extrait des appels d'outil écrits en JSON dans le texte de la réponse.
+
+    Formats tolérés : ``{"name": ..., "parameters": {...}}``, ``{"name": ..., "arguments": {...}}``,
+    une liste de ces objets, avec ou sans préfixe ``<|python_tag|>`` / bloc de code.
+    """
+    cleaned = text.replace("<|python_tag|>", "").strip()
+    cleaned = re.sub(r"^```(?:json)?|```$", "", cleaned, flags=re.M).strip()
+    m = _INLINE_CALL.search(cleaned)
+    if not m:
+        return []
+    candidate = m.group(0)
+    if candidate.startswith("{") and cleaned.strip().startswith("["):
+        candidate = cleaned
+    try:
+        data = json.loads(candidate)
+    except ValueError:
+        try:
+            data = json.loads(_repair_json(candidate))
+        except ValueError:
+            return []
+    items = data if isinstance(data, list) else [data]
+    calls: list[ToolCall] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        nested = item.get("function")
+        fn: dict[str, Any] = nested if isinstance(nested, dict) else item
+        name = fn.get("name")
+        args = fn.get("parameters", fn.get("arguments", {}))
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except ValueError:
+                args = {}
+        if isinstance(name, str) and name and isinstance(args, dict):
+            calls.append(ToolCall(name=name, arguments=args))
+    return calls
 
 
 class OllamaClient:
@@ -191,8 +255,18 @@ class OllamaClient:
                     args = {}
             calls.append(ToolCall(name=str(fn.get("name", "")), arguments=dict(args or {})))
         self._available = True
+        text = (msg.get("content") or "").strip()
+        if not calls:
+            # Certains modèles (llama3.1 notamment) écrivent l'appel en JSON dans le texte
+            # au lieu d'utiliser le champ tool_calls : on le récupère.
+            calls = parse_inline_tool_calls(text)
+            if calls or looks_like_tool_call(text):
+                # Un appel illisible ne doit jamais être prononcé tel quel.
+                if not calls:
+                    log.warning("Appel d'outil illisible ignoré : %s", text[:200])
+                text = ""
         return LLMReply(
-            text=(msg.get("content") or "").strip(),
+            text=text,
             tool_calls=calls,
             model=model,
             latency_ms=(loop.time() - started) * 1000,

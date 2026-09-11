@@ -227,7 +227,8 @@ async def list_timers() -> str:
         r"(?:annule|supprime|arrête|stoppe) (?:le |mon |ce )?(?:minuteur|rappel|chrono|compte à rebours|timer|alarme)",
         r"(?:annule|supprime|arrête) (?P<all>tous) (?:les |mes )?(?:minuteurs|rappels|chronos|alarmes)",
     ],
-    params={"all": "« tous » pour annuler tous les minuteurs"},
+    params={"all": "Usage interne : « tous » pour annuler tous les minuteurs"},
+    internal=["all"],
     category="minuteurs",
 )
 async def cancel_timer(all: str = "") -> str:

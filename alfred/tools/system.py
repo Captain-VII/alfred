@@ -104,11 +104,15 @@ def _resolve(level: str, up: str, down: str, delta: str, current: int, what: str
         r"(?P<down>moins) fort",
     ],
     params={
-        "level": "Niveau cible : entier 0-100, delta relatif comme +10 / -10, ou « plus » / « moins »",
+        "level": (
+            "Niveau sonore cible, en pourcentage : « 25 » pour un quart, « 50 » pour la moitié, "
+            "« 100 » pour le maximum. Accepte aussi un delta relatif : « +10 » pour monter, « -10 » pour baisser."
+        ),
         "up": "Usage interne : présent si la commande demande d'augmenter",
         "down": "Usage interne : présent si la commande demande de baisser",
         "delta": "Usage interne : amplitude du delta",
     },
+    internal=["up", "down", "delta"],
     category="système",
 )
 async def set_volume(level: str = "", up: str = "", down: str = "", delta: str = "") -> str:
@@ -163,11 +167,15 @@ async def mute(muted: str = "") -> str:
         r"écran (?P<down>moins) lumineux",
     ],
     params={
-        "level": "Niveau 0-100, delta +10 / -10, ou plus / moins",
+        "level": (
+            "Luminosité cible en pourcentage : « 40 », « 100 » pour le maximum. "
+            "Accepte aussi un delta relatif : « +10 » / « -10 »."
+        ),
         "up": "Usage interne",
         "down": "Usage interne",
         "delta": "Usage interne",
     },
+    internal=["up", "down", "delta"],
     category="système",
 )
 async def set_brightness(level: str = "", up: str = "", down: str = "", delta: str = "") -> str:
