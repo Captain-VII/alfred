@@ -7,39 +7,33 @@ projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ## [Unreleased]
 
-### Modifié
-- Modèle LLM par défaut : `llama3.1:latest` (secours `llama3.2:3b`), tous deux avec tool calling natif dans Ollama.
-- Le décorateur `@tool` accepte `internal=[...]` : les paramètres destinés aux regex du niveau 1 sont retirés du schéma envoyé au LLM.
-- Prompt de résumé web recentré sur la réponse à la question.
-
-### Corrigé
-- Volume et luminosité : compatibilité avec pycaw 2024 (`AudioDevice.EndpointVolume`).
-- Les appels d'outil écrits en JSON dans le texte de la réponse sont récupérés, y compris avec des guillemets mal échappés ; un appel illisible n'est jamais prononcé.
-- « un quart du volume » réglait le son à 90 % : les drapeaux internes de `set_volume` induisaient le modèle en erreur.
-- Plus de ponctuation doublée dans les accusés de réception (« Volume à trente pour cent., monsieur. »).
-- Les variables d'environnement `ALFRED__*` l'emportent désormais sur le `config.yaml`.
-- Whisper bascule automatiquement sur le processeur quand cuBLAS ou cuDNN manquent, au lieu d'échouer à la transcription.
-- « affiche mon bureau » activait la mise au premier plan d'une application.
-- Construction PyInstaller réparée : hook `webrtcvad` compatible avec `webrtcvad-wheels`, et collecte de `fastembed` sans import.
-- Le benchmark ne plante plus sur les consoles en cp1252 et distingue le cache chaud du calcul complet.
-
 ## [0.1.0] - 2026-09-11
 
+Première version publique.
+
 ### Ajouté
-- Routage à trois niveaux : regex (~0 ms), similarité sémantique (fastembed, ~15 ms), tool calling LLM (Ollama).
-- Reconnaissance vocale locale avec faster-whisper (`small`, int8) et détection de fin de phrase (webrtcvad).
-- Synthèse vocale Piper streamée phrase par phrase, voix `fr_FR-gilles-low` téléchargée au premier lancement.
-- 35 tools : applications (résolution floue), système (volume, luminosité, veille, verrouillage, arrêt, capture, ne-pas-déranger), média, web (DuckDuckGo + lecture de page + résumé), fichiers (Everything ou parcours), fenêtres, presse-papier (lecture, traduction, résumé, réécriture), minuteurs.
-- Overlay PyQt6 frameless sur l'écran du curseur, thème sombre/clair suivant Windows, mode texte.
+- Routage à trois niveaux : regex (moins de 0,1 ms), similarité sémantique locale (fastembed, environ 1,3 ms), tool calling LLM via Ollama. Une commande courante n'atteint jamais le modèle de langage.
+- Reconnaissance vocale locale avec faster-whisper (`small`, int8), détection de fin de phrase par webrtcvad, pré-roll et push-to-talk.
+- Synthèse vocale Piper streamée phrase par phrase, voix `fr_FR-gilles-low` téléchargée au premier lancement, interruption immédiate par Échap.
+- 35 tools : applications (résolution floue des noms), système (volume, luminosité, veille, verrouillage, arrêt, capture, ne-pas-déranger), média, web (DuckDuckGo, lecture de la page et résumé), fichiers (Everything ou parcours), fenêtres, presse-papier (lecture, traduction, résumé, réécriture), minuteurs.
+- Décorateur `@tool` qui génère le schéma JSON du LLM, enregistre les exemples du niveau 2 et les regex du niveau 1 en une seule déclaration. `internal=[...]` masque au modèle les paramètres réservés aux regex.
+- Overlay PyQt6 sans cadre sur l'écran du curseur, thème sombre ou clair suivant Windows, mode texte.
 - Icône de barre système : pause, réglages, logs, mises à jour, redémarrage, quitter.
-- Panneau de réglages complet et assistant de premier lancement (Ollama, modèle, voix, micro, haut-parleurs, démarrage auto).
-- Rechargement à chaud de `config.yaml`.
-- Mises à jour automatiques via GitHub Releases (canaux stable / bêta, installation silencieuse optionnelle).
+- Panneau de réglages complet et assistant de premier lancement : détection d'Ollama, téléchargement du modèle et de la voix, test du micro et des haut-parleurs, démarrage automatique.
+- Rechargement à chaud de `config.yaml`, surchargeable par variables d'environnement `ALFRED__*`.
+- Mises à jour automatiques via GitHub Releases : canaux stable et bêta, installation silencieuse optionnelle au redémarrage.
 - Persona majordome : vouvoiement, concision, accusés de réception variés, modes `formal` et `concise`.
-- Historique court (5 tours) pour les anaphores (« ferme-la »).
-- Journalisation rotative sur 7 jours, métriques de latence par étape.
-- Suite de tests (routeur, tools mockés, exécuteur, configuration, updater) et benchmark de latence.
-- Packaging PyInstaller + installeur Inno Setup, workflows CI et release.
+- Historique des cinq derniers tours, pour les anaphores du type « ferme-la ».
+- Journalisation rotative sur sept jours, métriques de latence par étape dans l'overlay.
+- Packaging PyInstaller et installeur Inno Setup, publiés automatiquement sur tag `v*`.
+
+### Robustesse
+- Un tool qui échoue devient une phrase parlée, jamais une exception qui remonte.
+- Le mode hors ligne annonce clairement l'indisponibilité de la recherche web.
+- Whisper bascule sur le processeur quand cuBLAS ou cuDNN manquent à côté de CUDA, au lieu d'échouer à la transcription.
+- Les appels d'outil que certains modèles écrivent en JSON dans leur réponse sont récupérés, guillemets mal échappés compris. Un appel illisible n'est jamais prononcé.
+- Une marge de confiance entre les deux meilleurs candidats du niveau 2 évite les confusions entre outils proches.
+- 175 tests, dont aucun n'ouvre d'application ni ne modifie le volume. Benchmark de latence par étape. CI sur Python 3.11 et 3.12.
 
 [Unreleased]: https://github.com/Captain-VII/alfred/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Captain-VII/alfred/releases/tag/v0.1.0
