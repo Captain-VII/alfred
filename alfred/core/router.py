@@ -142,7 +142,8 @@ class SemanticIndex:
         vectors = np.array(list(model.embed(texts)), dtype=np.float32)
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
-        return vectors / norms
+        # asarray explicite : selon la version de numpy, la division renvoie Any aux yeux de mypy.
+        return np.asarray(vectors / norms, dtype=np.float32)
 
     # ---- requête -----------------------------------------------------
     def query(self, text: str) -> tuple[str | None, float, str]:
