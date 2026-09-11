@@ -207,7 +207,7 @@ Les logs sont dans `%APPDATA%\Alfred\logs\alfred.log` (tray → « Ouvrir les lo
 
 ```bash
 pip install -e ".[dev]"
-pytest                      # 150+ tests, aucun appel système réel
+pytest                      # 175 tests, aucun appel système réel
 ruff check . && mypy alfred
 python scripts/benchmark.py # tableau de latence par étape
 python scripts/build.py     # dist/Alfred/ + installer/Output/Alfred-Setup-x.y.z.exe

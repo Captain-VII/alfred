@@ -15,6 +15,7 @@ import logging
 import re
 import time
 import unicodedata
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -89,9 +90,13 @@ class SemanticIndex:
         if self._model is None:
             from fastembed import TextEmbedding
 
-            self._model = TextEmbedding(
-                model_name=_EMBED_MODEL, cache_dir=str(cache_dir() / "fastembed")
-            )
+            # fastembed avertit d'un changement de stratégie de pooling : sans importance
+            # ici, puisque les exemples et les commandes passent par le même modèle.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, module="fastembed.*")
+                self._model = TextEmbedding(
+                    model_name=_EMBED_MODEL, cache_dir=str(cache_dir() / "fastembed")
+                )
         return self._model
 
     def build(self) -> None:
