@@ -41,5 +41,5 @@ projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - Suite de tests (routeur, tools mockés, exécuteur, configuration, updater) et benchmark de latence.
 - Packaging PyInstaller + installeur Inno Setup, workflows CI et release.
 
-[Unreleased]: https://github.com/dorian-dubosc/alfred/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/dorian-dubosc/alfred/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Captain-VII/alfred/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Captain-VII/alfred/releases/tag/v0.1.0

@@ -7,7 +7,7 @@
 #endif
 #define AppName "Alfred"
 #define AppPublisher "Dorian Dubosc"
-#define AppURL "https://github.com/dorian-dubosc/alfred"
+#define AppURL "https://github.com/Captain-VII/alfred"
 #define AppExe "Alfred.exe"
 
 [Setup]

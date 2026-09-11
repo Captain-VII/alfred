@@ -65,7 +65,7 @@ updates:
   auto_check: true
   channel: stable                  # stable | beta
   auto_install: false              # installe silencieusement au prochain redémarrage
-  repo: dorian-dubosc/alfred
+  repo: Captain-VII/alfred
 
 # Alias : nom parlé → exécutable (résolution floue appliquée ensuite)
 app_aliases:

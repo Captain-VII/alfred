@@ -5,7 +5,7 @@ Merci de votre intérêt. Voici comment travailler proprement sur le projet.
 ## Mise en place
 
 ```bash
-git clone https://github.com/dorian-dubosc/alfred.git
+git clone https://github.com/Captain-VII/alfred.git
 cd alfred
 python -m venv .venv
 .venv\Scripts\activate

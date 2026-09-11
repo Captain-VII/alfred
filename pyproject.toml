@@ -81,9 +81,9 @@ cuda = [
 alfred = "alfred.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/dorian-dubosc/alfred"
-Issues = "https://github.com/dorian-dubosc/alfred/issues"
-Changelog = "https://github.com/dorian-dubosc/alfred/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Captain-VII/alfred"
+Issues = "https://github.com/Captain-VII/alfred/issues"
+Changelog = "https://github.com/Captain-VII/alfred/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["alfred*"]

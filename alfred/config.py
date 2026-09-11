@@ -149,7 +149,7 @@ class UpdatesConfig(BaseModel):
     auto_check: bool = True
     channel: Literal["stable", "beta"] = "stable"
     auto_install: bool = False
-    repo: str = "dorian-dubosc/alfred"
+    repo: str = "Captain-VII/alfred"
 
 
 class AlfredConfig(BaseSettings):

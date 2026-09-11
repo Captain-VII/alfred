@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dorian-dubosc/alfred/actions/workflows/ci.yml"><img src="https://github.com/dorian-dubosc/alfred/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/dorian-dubosc/alfred/releases/latest"><img src="https://img.shields.io/github/v/release/dorian-dubosc/alfred?include_prereleases&label=version" alt="Version"></a>
+  <a href="https://github.com/Captain-VII/alfred/actions/workflows/ci.yml"><img src="https://github.com/Captain-VII/alfred/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Captain-VII/alfred/releases/latest"><img src="https://img.shields.io/github/v/release/Captain-VII/alfred?include_prereleases&label=version" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-green.svg" alt="Licence MIT"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/plateforme-Windows%2011-0078d4.svg" alt="Windows 11">
@@ -33,7 +33,7 @@
 ## Installation en 3 étapes
 
 1. **Installez [Ollama](https://ollama.com/download/windows)** et lancez-le (une icône apparaît dans la barre système).
-2. **Téléchargez `Alfred-Setup-x.y.z.exe`** depuis la [dernière release](https://github.com/dorian-dubosc/alfred/releases/latest) et exécutez-le.
+2. **Téléchargez `Alfred-Setup-x.y.z.exe`** depuis la [dernière release](https://github.com/Captain-VII/alfred/releases/latest) et exécutez-le.
 3. **Suivez l'assistant de premier lancement** : il télécharge le modèle de langage (`llama3.1:latest`, ~4,9 Go) et la voix (~60 Mo), teste votre micro et vos haut-parleurs.
 
 Alfred vit ensuite dans la barre système. **Ctrl + Espace** pour parler, **Ctrl + Maj + Espace** pour taper, **Échap** pour tout annuler.
@@ -42,7 +42,7 @@ Alfred vit ensuite dans la barre système. **Ctrl + Espace** pour parler, **Ctrl
 <summary><strong>Installation depuis les sources</strong></summary>
 
 ```bash
-git clone https://github.com/dorian-dubosc/alfred.git
+git clone https://github.com/Captain-VII/alfred.git
 cd alfred
 python -m venv .venv
 .venv\Scripts\activate
