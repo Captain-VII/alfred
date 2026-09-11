@@ -20,6 +20,11 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# La console Windows est en cp1252 dès que la sortie est redirigée : les flèches
+# et les accents doivent malgré tout s'afficher.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from alfred.config import AlfredConfig
 from alfred.core.context import ConversationContext
 from alfred.core.executor import Executor
@@ -141,10 +146,11 @@ async def main(quick: bool) -> None:
         index = SemanticIndex(tools)
         t0 = time.perf_counter()
         index.build()
+        origin = "cache disque" if index.loaded_from_cache else "calcul complet"
         rows.append(
             (
                 "index sémantique (boot)",
-                f"{sum(len(t.examples) for t in tools)} exemples",
+                f"{sum(len(t.examples) for t in tools)} exemples, {origin}",
                 (time.perf_counter() - t0) * 1000,
                 0,
             )

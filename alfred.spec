@@ -3,7 +3,12 @@
 
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import (
+    collect_all,
+    collect_data_files,
+    collect_dynamic_libs,
+    collect_submodules,
+)
 
 ROOT = Path(SPECPATH)
 
@@ -29,8 +34,8 @@ hiddenimports = [
     "win32timezone",
 ]
 
-# Bibliothèques avec données/dll à embarquer intégralement
-for pkg in ("piper", "faster_whisper", "ctranslate2", "onnxruntime", "fastembed", "tokenizers", "webrtcvad", "sounddevice", "windows_toasts", "trafilatura", "duckduckgo_search"):
+# Bibliothèques avec données/dll à embarquer intégralement.
+for pkg in ("piper", "faster_whisper", "ctranslate2", "onnxruntime", "webrtcvad", "sounddevice", "windows_toasts", "trafilatura", "duckduckgo_search"):
     try:
         d, b, h = collect_all(pkg)
         datas += d
@@ -38,6 +43,27 @@ for pkg in ("piper", "faster_whisper", "ctranslate2", "onnxruntime", "fastembed"
         hiddenimports += h
     except Exception:  # noqa: BLE001 — package optionnel absent
         pass
+
+# fastembed et tokenizers embarquent des extensions natives dont l'import fait
+# planter le sous-processus isolé de collect_all (violation d'accès). On collecte
+# donc leurs données et leurs DLL sans jamais les importer, et on déclare
+# explicitement les modules utilisés par alfred/core/router.py.
+for pkg in ("fastembed", "tokenizers", "py_rust_stemmers", "huggingface_hub"):
+    try:
+        datas += collect_data_files(pkg)
+        binaries += collect_dynamic_libs(pkg)
+    except Exception:  # noqa: BLE001
+        pass
+hiddenimports += [
+    "fastembed",
+    "fastembed.text",
+    "fastembed.text.text_embedding",
+    "fastembed.common",
+    "fastembed.common.model_management",
+    "huggingface_hub",
+    "py_rust_stemmers",
+    "tokenizers",
+]
 
 datas += collect_data_files("screen_brightness_control")
 hiddenimports += collect_submodules("pystray")
@@ -48,7 +74,7 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
-    hookspath=[],
+    hookspath=[str(ROOT / "installer" / "hooks")],
     runtime_hooks=[],
     excludes=["tkinter", "matplotlib", "IPython", "jupyter", "notebook", "torch", "torchvision", "torchaudio"],
     noarchive=False,

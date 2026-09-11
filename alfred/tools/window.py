@@ -167,7 +167,7 @@ async def snap_windows(left: str = "", right: str = "") -> str:
         "cache toutes les fenêtres",
     ],
     patterns=[
-        r"(?:montre|affiche|va sur) (?:le )?bureau",
+        r"(?:montre|affiche|va sur)(?:-moi)? (?:le |mon |ce )?bureau",
         r"(?:réduis|minimise|cache) (?:tout|toutes les fenêtres)",
     ],
     category="fenêtres",

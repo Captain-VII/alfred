@@ -76,6 +76,7 @@ class SemanticIndex:
         self._labels: list[tuple[str, str]] = []  # (tool_name, exemple)
         self._matrix: np.ndarray | None = None
         self._model: Any = None
+        self.loaded_from_cache = False
 
     # ---- chargement --------------------------------------------------
     def _fingerprint(self) -> str:
@@ -105,6 +106,7 @@ class SemanticIndex:
                 data = np.load(self._cache_path, allow_pickle=False)
                 if str(data["fingerprint"]) == fp:
                     self._matrix = data["matrix"]
+                    self.loaded_from_cache = True
                     log.info(
                         "Index sémantique chargé depuis le cache (%d exemples)", len(self._labels)
                     )

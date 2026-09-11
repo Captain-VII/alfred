@@ -9,6 +9,19 @@ projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ### Modifié
 - Modèle LLM par défaut : `llama3.1:latest` (secours `llama3.2:3b`), tous deux avec tool calling natif dans Ollama.
+- Le décorateur `@tool` accepte `internal=[...]` : les paramètres destinés aux regex du niveau 1 sont retirés du schéma envoyé au LLM.
+- Prompt de résumé web recentré sur la réponse à la question.
+
+### Corrigé
+- Volume et luminosité : compatibilité avec pycaw 2024 (`AudioDevice.EndpointVolume`).
+- Les appels d'outil écrits en JSON dans le texte de la réponse sont récupérés, y compris avec des guillemets mal échappés ; un appel illisible n'est jamais prononcé.
+- « un quart du volume » réglait le son à 90 % : les drapeaux internes de `set_volume` induisaient le modèle en erreur.
+- Plus de ponctuation doublée dans les accusés de réception (« Volume à trente pour cent., monsieur. »).
+- Les variables d'environnement `ALFRED__*` l'emportent désormais sur le `config.yaml`.
+- Whisper bascule automatiquement sur le processeur quand cuBLAS ou cuDNN manquent, au lieu d'échouer à la transcription.
+- « affiche mon bureau » activait la mise au premier plan d'une application.
+- Construction PyInstaller réparée : hook `webrtcvad` compatible avec `webrtcvad-wheels`, et collecte de `fastembed` sans import.
+- Le benchmark ne plante plus sur les consoles en cp1252 et distingue le cache chaud du calcul complet.
 
 ## [0.1.0] - 2026-09-11
 

@@ -89,15 +89,18 @@ Entrée (voix → faster-whisper, ou texte)
                   exécution async ──► réponse Piper streamée phrase par phrase
 ```
 
-Latence mesurée sur un i7 / RTX 3060 avec `python scripts/benchmark.py` :
+Mesuré avec `python scripts/benchmark.py` (Ryzen, RTX, modèles préchargés) :
 
 | Étape | Médiane |
 |---|---|
 | Routage niveau 1 | < 0,1 ms |
-| Routage niveau 2 (embedding + recherche) | ~12 ms |
-| Whisper `small` int8, phrase de 2 s (GPU / CPU) | ~180 ms / ~650 ms |
-| Piper, première phrase audible | ~70 ms |
-| Niveau 3, `llama3.1:latest` préchargé | ~900 ms |
+| Routage niveau 1 + exécution du tool | 0,1 ms |
+| Routage niveau 2 (embedding + recherche) | 1,3 ms |
+| Piper, une phrase courte | 22 ms |
+| Niveau 3, `llama3.1` préchargé, action simple | 0,5 s |
+| Niveau 3 avec recherche web (lecture de page + résumé) | 2,1 s |
+
+Coûts payés une seule fois au démarrage, jamais pendant une commande : index sémantique 1,0 s (puis 2 ms depuis le cache disque), voix Piper 1,1 s, modèle Whisper 1,1 s.
 
 Ce qui rend ça possible : Ollama préchargé (`keep_alive: -1`) avec requête de warm-up, Whisper et Piper chargés une fois en RAM, embeddings calculés au boot et cachés sur disque, tools `async`, TTS qui démarre pendant l'exécution des tools lents.
 
@@ -132,6 +135,7 @@ Règles :
 - **`patterns`** : regex `fullmatch`, insensibles à la casse, appliquées au texte normalisé (minuscules, politesses retirées). Les **groupes nommés** deviennent des paramètres.
 - Les **types** des paramètres sont déduits de la signature (`str`, `int`, `float`, `bool`, `list[str]`) et convertis automatiquement, que la valeur vienne d'une regex ou du LLM.
 - Un paramètre **sans valeur par défaut** est obligatoire : le niveau 2 ne déclenchera le tool que si une regex l'a extrait, sinon il laisse le LLM le déduire.
+- **`internal=[...]`** masque des paramètres du schéma envoyé au LLM. À utiliser pour tout paramètre qui n'existe que pour recevoir un groupe de regex : sans cela le modèle s'en saisit et invente des valeurs. C'est ce qui sépare `level` (« mets le volume à 25 ») des drapeaux `up` / `down` / `delta` de `set_volume`.
 - **Aucun appel système direct** : passez par `alfred/tools/_win.py` (c'est ce que les tests remplacent), et exécutez le bloquant via `_win.run_blocking(...)`.
 - Besoin du LLM, du TTS ou de la config ? `from alfred.core import services` → `services.llm.complete(...)`, `services.say(...)`, `services.cfg()`.
 
@@ -190,7 +194,9 @@ Deux voix masculines françaises sont proposées. `fr_FR-gilles-low` est la plus
 | Alfred n'entend rien | Mauvais micro sélectionné | Réglages → Modèles → Microphone. Vérifiez aussi la confidentialité Windows (accès au micro pour les applications de bureau). |
 | Le raccourci ne répond pas | Une autre application capture Ctrl+Espace (souvent un IME ou un IDE) | Changez `hotkeys.invoke_voice` (ex. `alt+space`, `f9`). |
 | Première réponse LLM très lente | Modèle en cours de chargement | Normal au premier appel ; `keep_alive: -1` le garde ensuite en mémoire. |
-| Réponses lentes en général | Whisper sur CPU, ou modèle 7B sans GPU | `stt.model: base` et `llm.model: llama3.2:3b`. |
+| Réponses lentes en général | Whisper sur CPU, ou modèle 8B sans GPU | `stt.model: base` et `llm.model: llama3.2:3b`. |
+| « Whisper bascule sur le processeur » dans les logs | cuBLAS ou cuDNN manquants à côté de CUDA | Rien à faire, Alfred continue sur le processeur. Pour retrouver le GPU, installez cuBLAS et cuDNN 9. |
+| Alfred prononce du JSON | Modèle sans tool calling fiable | Utilisez `llama3.1` ou `qwen2.5:7b-instruct`. Les appels illisibles sont normalement filtrés. |
 | « Cette application n'est pas installée » | Nom trop éloigné ou app hors menu Démarrer | Ajoutez un alias dans `app_aliases`. |
 | La recherche web échoue | Hors ligne, ou DuckDuckGo limite | Alfred l'annonce ; réessayez plus tard. |
 | Rien ne se passe, aucune icône | Une instance tourne déjà | Gestionnaire des tâches → Alfred.exe, ou tray → Redémarrer. |

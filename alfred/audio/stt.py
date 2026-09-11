@@ -28,6 +28,14 @@ FRAME_SAMPLES = SAMPLE_RATE * FRAME_MS // 1000  # 480 échantillons
 PRE_ROLL_FRAMES = 10  # ~300 ms conservés avant la détection de parole
 
 
+_CUDA_FAILURE_MARKERS = ("cublas", "cudnn", "cuda", "libcu", "gpu")
+
+
+def _is_cuda_failure(exc: BaseException) -> bool:
+    """Vrai si l'exception provient d'une pile CUDA absente ou incomplète."""
+    return any(marker in str(exc).lower() for marker in _CUDA_FAILURE_MARKERS)
+
+
 @dataclass(slots=True)
 class Transcription:
     text: str
@@ -41,6 +49,7 @@ class SpeechToText:
         self._cfg = cfg
         self._model: Any = None
         self._vad: Any = None
+        self._forced_device: str | None = None  # « cpu » après un échec CUDA
         self._lock = threading.Lock()
 
     # ---- cycle de vie ------------------------------------------------
@@ -53,12 +62,16 @@ class SpeechToText:
         )
         self._cfg = cfg
         self._vad = None
+        if reload_needed:
+            self._forced_device = None
         if reload_needed and self._model is not None:
             self._model = None
             threading.Thread(target=self.load, daemon=True, name="stt-reload").start()
 
     def _resolve_device(self) -> tuple[str, str]:
         device, compute = self._cfg.device, self._cfg.compute_type
+        if self._forced_device:
+            return self._forced_device, "int8"
         if device == "auto":
             try:
                 import ctranslate2
@@ -172,12 +185,7 @@ class SpeechToText:
         return audio
 
     # ---- transcription -----------------------------------------------
-    def transcribe(self, audio: np.ndarray) -> tuple[str, float]:
-        """Transcrit un tampon float32 16 kHz. Retourne ``(texte, prob_langue)``."""
-        if self._model is None:
-            self.load()
-        if audio.size < SAMPLE_RATE // 4:  # < 250 ms : rien d'exploitable
-            return "", 0.0
+    def _transcribe_once(self, audio: np.ndarray) -> tuple[str, float]:
         segments, info = self._model.transcribe(
             audio,
             language="fr",
@@ -191,6 +199,36 @@ class SpeechToText:
         )
         text = " ".join(s.text.strip() for s in segments).strip()
         return text, float(getattr(info, "language_probability", 0.0))
+
+    def fall_back_to_cpu(self) -> None:
+        """Recharge le modèle sur le processeur après un échec CUDA."""
+        from faster_whisper import WhisperModel
+
+        with self._lock:
+            self._forced_device = "cpu"
+            self._model = WhisperModel(
+                self._cfg.model, device="cpu", compute_type="int8", cpu_threads=4, num_workers=1
+            )
+        log.warning("Whisper bascule sur le processeur : les bibliothèques CUDA sont incomplètes")
+
+    def transcribe(self, audio: np.ndarray) -> tuple[str, float]:
+        """Transcrit un tampon float32 16 kHz. Retourne ``(texte, prob_langue)``.
+
+        Une installation CUDA incomplète (cuBLAS ou cuDNN manquants) ne se manifeste
+        qu'à la première transcription : dans ce cas on rebascule sur le processeur
+        plutôt que d'échouer, définitivement pour la durée de la session.
+        """
+        if self._model is None:
+            self.load()
+        if audio.size < SAMPLE_RATE // 4:  # < 250 ms : rien d'exploitable
+            return "", 0.0
+        try:
+            return self._transcribe_once(audio)
+        except Exception as exc:
+            if self._forced_device == "cpu" or not _is_cuda_failure(exc):
+                raise
+            self.fall_back_to_cpu()
+            return self._transcribe_once(audio)
 
     async def listen(
         self, cancel: threading.Event, hold: threading.Event | None = None

@@ -375,7 +375,7 @@ async def close_app(app: str = "") -> str:
     ],
     patterns=[
         rf"(?:bascule|passe|va|switch) (?:sur|vers|à) {_APP_RE}",
-        rf"(?:montre|affiche)(?:-moi)? (?!le bureau|bureau|le fichier|la fenêtre|le document|les fenêtres){_APP_RE}",
+        rf"(?:montre|affiche)(?:-moi)? (?!(?:le |la |les |mon |ma |mes |ce |cette )?(?:bureau|fichier|document|fenêtre|dossier|photo|image)\b){_APP_RE}",
     ],
     params={"app": "Nom de l'application ou titre de fenêtre"},
     category="applications",
