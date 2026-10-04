@@ -19,6 +19,7 @@ import sys
 import threading
 from collections.abc import Coroutine
 from concurrent.futures import Future
+from contextvars import ContextVar
 from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -45,6 +46,13 @@ from alfred.ui.wizard import FirstRunWizard
 from alfred.updater import ReleaseInfo, Updater
 
 log = logging.getLogger(__name__)
+
+# Drapeau d'annulation de la session en cours. Chaque tâche asyncio possède sa propre
+# copie du contexte : l'exécuteur peut donc appeler ``_speak`` sans rien savoir de la
+# session, et une session périmée ne consultera jamais le drapeau d'une plus récente.
+_session_cancel: ContextVar[threading.Event | None] = ContextVar(
+    "alfred_session_cancel", default=None
+)
 
 
 class AlfredApp(QObject):
@@ -351,17 +359,24 @@ class AlfredApp(QObject):
         return pick(category, p.mode, p.address, detail)
 
     async def _voice_session(self) -> None:
+        # Le drapeau d'annulation est capturé une fois pour toutes : une nouvelle
+        # invocation remplace self._cancel_event, et une session périmée qui relirait
+        # l'attribut verrait le drapeau neuf de la session suivante, donc non levé.
+        cancel = self._cancel_event
+        _session_cancel.set(cancel)
         cfg = self._config.current
         hold = self._ptt_event if cfg.hotkeys.push_to_talk else None
         try:
-            tr = await self._stt.listen(self._cancel_event, hold)
+            tr = await self._stt.listen(cancel, hold)
         except Exception:
             log.exception("Écoute impossible")
+            if cancel.is_set():
+                return
             self._overlay.set_state("error", "Micro indisponible")
             await self._tts.say(self._persona("error", "le microphone est indisponible."))
             self._overlay.hide_later(2500)
             return
-        if self._cancel_event.is_set():
+        if cancel.is_set():
             return
         log.info(
             "STT : « %s » (enreg. %.0f ms, transcription %.0f ms)",
@@ -377,10 +392,14 @@ class AlfredApp(QObject):
             return
         self._sounds.play("click")
         self._overlay.set_state("thinking", tr.text)
-        await self._process(tr.text)
+        await self._process(tr.text, cancel)
 
-    async def _process(self, text: str) -> None:
+    async def _process(self, text: str, cancel: threading.Event | None = None) -> None:
+        cancel = cancel or self._cancel_event
+        _session_cancel.set(cancel)
         result = await self._executor.handle(text)
+        if cancel.is_set():
+            return
         if result.cancelled and not result.spoken:
             return
         if self._config.current.behavior.show_metrics:
@@ -388,24 +407,36 @@ class AlfredApp(QObject):
         self._overlay.hide_later(2500 if result.tool else 4000)
 
     async def _speak(self, text: str) -> None:
-        """Callback de l'exécuteur : affiche puis prononce."""
+        """Callback de l'exécuteur : affiche puis prononce.
+
+        Échap peut tomber pendant que le LLM réfléchit : une réponse annulée ne doit
+        pas être prononcée, d'autant que ``say()`` réarme le drapeau d'interruption.
+        """
+        cancel = _session_cancel.get() or self._cancel_event
+        if cancel.is_set():
+            return
         self._overlay.set_state("speaking", "")
         self._overlay.set_reply(text)
         await self._tts.say(text)
 
     async def _confirm(self, question: str) -> bool:
         """Callback de l'exécuteur : pose la question, attend oui/non (voix ou texte)."""
+        cancel = _session_cancel.get() or self._cancel_event
+        if cancel.is_set():
+            return False
         self._overlay.set_state("confirm", question)
         await self._tts.say(question)
-        if self._cancel_event.is_set():
+        if cancel.is_set():
             return False
         if self._last_source == "voice":
             self._sounds.play("listen")
             self._overlay.set_state("listening", question)
             try:
-                tr = await self._stt.listen(self._cancel_event, None)
+                tr = await self._stt.listen(cancel, None)
             except Exception:
                 log.exception("Écoute de confirmation impossible")
+                return False
+            if cancel.is_set():
                 return False
             answer = tr.text
         else:

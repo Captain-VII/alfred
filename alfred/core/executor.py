@@ -180,6 +180,11 @@ class Executor:
             except TimeoutError:
                 await self._speak(self._say("wait"))
                 detail = await task
+        except asyncio.CancelledError:
+            # Le shield absorbe l'annulation : sans cela le tool poursuivrait ses effets
+            # de bord après un Échap, et son exception ne serait jamais récupérée.
+            task.cancel()
+            raise
         except ToolError as exc:
             spoken = self._say("error", str(exc))
             await self._speak(spoken)

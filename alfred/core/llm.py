@@ -40,7 +40,6 @@ class LLMReply:
     latency_ms: float = 0.0
 
 
-_SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
 _INLINE_CALL = re.compile(r"\{.*\}", re.S)
 # Valeur de chaîne JSON, y compris quand elle contient des guillemets non échappés
 # (« capitale de l"Australie » : llama3.1 produit régulièrement ce genre de JSON cassé).
@@ -271,42 +270,6 @@ class OllamaClient:
             model=model,
             latency_ms=(loop.time() - started) * 1000,
         )
-
-    async def stream_sentences(
-        self, messages: list[dict[str, Any]], model: str | None = None
-    ) -> AsyncIterator[str]:
-        """Stream la réponse et la découpe en phrases dès qu'elles sont complètes (pour le TTS)."""
-        payload = {
-            "model": model or self._cfg.model,
-            "messages": messages,
-            "stream": True,
-            "keep_alive": self._cfg.keep_alive,
-            "options": {"temperature": self._cfg.temperature, "num_predict": 200},
-        }
-        buffer = ""
-        try:
-            async with self._client.stream("POST", "/api/chat", json=payload) as r:
-                r.raise_for_status()
-                async for line in r.aiter_lines():
-                    if not line.strip():
-                        continue
-                    try:
-                        chunk = json.loads(line)
-                    except ValueError:
-                        continue
-                    buffer += chunk.get("message", {}).get("content", "")
-                    parts = _SENTENCE_END.split(buffer)
-                    if len(parts) > 1:
-                        for sentence in parts[:-1]:
-                            if sentence.strip():
-                                yield sentence.strip()
-                        buffer = parts[-1]
-                    if chunk.get("done"):
-                        break
-        except httpx.HTTPError as exc:
-            raise LLMUnavailable(str(exc)) from exc
-        if buffer.strip():
-            yield buffer.strip()
 
     async def complete(self, system: str, user: str, max_tokens: int = 200) -> str:
         """Génération libre (résumé, traduction). Implémente ``services.Summarizer``."""

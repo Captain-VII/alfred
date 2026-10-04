@@ -128,8 +128,18 @@ def _search_walk(query: str) -> list[Path]:
                     score = fuzz.partial_ratio(q, folded)
                     if score >= 80:
                         scored.append((float(score), Path(dirpath) / fn))
-    scored.sort(key=lambda s: (-s[0], -s[1].stat().st_mtime if s[1].exists() else 0))
-    return [p for _, p in scored[: MAX_RESULTS * 3]]
+    # La date est relevée une fois par fichier, pas à chaque comparaison : deux appels
+    # système par comparaison coûtent cher, et un fichier temporaire qui disparaît entre
+    # exists() et stat() ferait échouer toute la recherche.
+    dated: list[tuple[float, float, Path]] = []
+    for score, path in scored:
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:  # fichier disparu ou illisible : il passe en dernier
+            mtime = 0.0
+        dated.append((score, mtime, path))
+    dated.sort(key=lambda s: (-s[0], -s[1]))
+    return [p for _, _, p in dated[: MAX_RESULTS * 3]]
 
 
 def search_files(query: str) -> list[Path]:

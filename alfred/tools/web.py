@@ -117,9 +117,14 @@ async def web_search(query: str) -> str:
                 break
         except (httpx.HTTPError, ValueError):
             continue
+    # La source annoncée doit désigner le texte réellement résumé : si la page lue est
+    # trop maigre, on retombe sur l'extrait du premier résultat, donc sur sa source à lui.
+    if len(page_text) > 300:
+        content, source_href = page_text, source_url
+    else:
+        content, source_href = results[0].get("body", ""), results[0].get("href", "")
     snippet = results[0].get("body", "")
-    source = _site_name(source_url or results[0].get("href", ""))
-    content = page_text if len(page_text) > 300 else snippet
+    source = _site_name(source_href)
 
     if services.llm is None:
         return f"{snippet[:300]} Source : {source}."

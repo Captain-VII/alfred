@@ -159,8 +159,11 @@ class AlfredConfig(BaseSettings):
         env_prefix="ALFRED__", env_nested_delimiter="__", extra="ignore"
     )
 
-    # Données YAML fusionnées (défaut + utilisateur), injectées comme source de priorité basse
-    _yaml_data: ClassVar[dict[str, Any]] = {}
+    # Données YAML fusionnées (défaut + utilisateur), injectées comme source de priorité basse.
+    # Propres à chaque thread : ``reload()`` tourne sur un thread watchdog pendant que
+    # ``update()`` tourne sur le thread Qt, et un dictionnaire partagé ferait qu'un appel
+    # construise la configuration de l'autre — ou, pire, une configuration vide.
+    _yaml_state: ClassVar[threading.local] = threading.local()
 
     @classmethod
     def settings_customise_sources(
@@ -175,13 +178,22 @@ class AlfredConfig(BaseSettings):
         return (init_settings, env_settings, _YamlSource(settings_cls))
 
     @classmethod
+    def yaml_data(cls) -> dict[str, Any]:
+        """Données YAML visibles par le thread courant (vide par défaut)."""
+        return getattr(cls._yaml_state, "data", None) or {}
+
+    @classmethod
     def from_yaml(cls, data: dict[str, Any]) -> AlfredConfig:
-        """Construit la config depuis un mapping YAML, en laissant l'environnement surcharger."""
-        cls._yaml_data = data
+        """Construit la config depuis un mapping YAML, en laissant l'environnement surcharger.
+
+        Réentrant et sûr vis-à-vis des threads : chaque thread ne voit que ses propres données.
+        """
+        previous = getattr(cls._yaml_state, "data", None)
+        cls._yaml_state.data = data
         try:
             return cls()
         finally:
-            cls._yaml_data = {}
+            cls._yaml_state.data = previous
 
     general: GeneralConfig = Field(default_factory=GeneralConfig)
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
@@ -206,10 +218,10 @@ class _YamlSource(PydanticBaseSettingsSource):
     """Source pydantic-settings alimentée par ``AlfredConfig._yaml_data``."""
 
     def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
-        return AlfredConfig._yaml_data.get(field_name), field_name, False
+        return AlfredConfig.yaml_data().get(field_name), field_name, False
 
     def __call__(self) -> dict[str, Any]:
-        return dict(AlfredConfig._yaml_data)
+        return dict(AlfredConfig.yaml_data())
 
 
 # ----------------------------------------------------------------------
@@ -303,9 +315,14 @@ class ConfigManager:
             self._listeners.append(listener)
 
     def reload(self) -> AlfredConfig:
-        """Recharge depuis le disque et notifie. Silencieux si rien n'a changé."""
-        new = load_config()
+        """Recharge depuis le disque et notifie. Silencieux si rien n'a changé.
+
+        La lecture a lieu sous le verrou : lue au-dehors, elle pourrait dater d'avant
+        un ``update()`` concurrent et réécraser en mémoire les réglages tout juste
+        enregistrés par l'utilisateur.
+        """
         with self._lock:
+            new = load_config()
             if new.model_dump() == self._config.model_dump():
                 return self._config
             self._config = new
@@ -332,8 +349,10 @@ class ConfigManager:
                     data[name] = patch
             new = AlfredConfig.from_yaml(data)
             self._config = new
+            # Écriture sous le verrou : sinon un ``reload()`` concurrent lirait le
+            # fichier d'avant la sauvegarde et annulerait la modification en mémoire.
+            save_config(new)
             listeners = list(self._listeners)
-        save_config(new)
         for listener in listeners:
             try:
                 listener(new)
